@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.NotebookMapper">
+
+    <select id="listNotebook" resultType="com.example.pojo.vo.NotebookInfoVO">
+        select
+            n.id,
+            n.title,
+            n.content,
+            u.username as create_user,
+            n.create_time,
+            u2.username as update_user,
+            n.update_time
+        from t_notebook n
+        left join t_user u on n.create_user = u.id
+        left join t_user u2 on n.update_user = u2.id
+    </select>
+</mapper>

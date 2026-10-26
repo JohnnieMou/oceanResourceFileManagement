@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.DataPermissionMapper">
+
+    <select id="pageQuery" resultType="com.example.pojo.vo.DataPermissionVO">
+        select
+            usr.name username,
+            dp.table_cn_name,
+            dp.year_start,
+            dp.year_end,
+            dp.voyage_start,
+            dp.voyage_end,
+            dp.create_time,
+            dp.update_time
+        from t_data_permission dp
+        left join t_user usr on dp.user_id = usr.id
+    </select>
+
+    <select id="listNoPermissionTables" resultType="java.lang.String">
+        select
+            table_cn_name
+        from t_table
+        where table_cn_name not in (
+            select
+                table_cn_name
+            from t_data_permission
+            where user_id = #{userId}
+        )
+    </select>
+    <select id="getByUserId" resultType="com.example.pojo.vo.DataPermissionVO" parameterType="java.lang.Long">
+        select
+            usr.name username,
+            dp.table_cn_name,
+            dp.year_start,
+            dp.year_end,
+            dp.voyage_start,
+            dp.voyage_end,
+            dp.create_time,
+            dp.update_time
+        from t_data_permission dp
+        left join t_user usr on dp.user_id = usr.id
+        where dp.user_id = #{userId}
+    </select>
+</mapper>

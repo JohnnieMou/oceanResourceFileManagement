@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.VoyageAttachmentMapper">
+
+    <select id="pageQuery" resultType="com.example.pojo.vo.AttachmentVO">
+        select v.id                 as id,
+               v.location           as location,
+               v.voyage             as voyage,
+               f.original_file_name as file_name,
+               'null'               as fileLink,
+               v.update_time        as update_time,
+               v.upload_time        as upload_time
+        from t_voyage_attachment v
+                 left join t_file_mapping f
+                           on v.file_id = f.id
+    </select>
+</mapper>

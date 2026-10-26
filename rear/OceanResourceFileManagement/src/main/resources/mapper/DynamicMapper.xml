@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.DynamicMapper">
+
+    <insert id="createTable" parameterType="String">
+        create table `${finalTableName}` (
+        id bigint primary key auto_increment,
+        <foreach collection="columns" item="column" separator=",">
+            ${column}
+        </foreach>
+        );
+        <if test="geoFieldName != null and geoFieldName.size() == 2">
+            alter table `${finalTableName}` add SPATIAL index (${geoFieldName[0]}, ${geoFieldName[1]}) geometry;
+        </if>
+    </insert>
+
+    <insert id="save" parameterType="List">
+        insert into ${finalTableName}
+        <foreach collection="list[0].keySet()" item="key" open="(" close=")" separator=",">
+            `${key}`
+        </foreach>
+        values
+        <foreach collection="list" item="map" open="" close=" " separator=",">
+            <foreach collection="map.entrySet()" item="value" open="(" separator="," close=")">
+                #{value}
+            </foreach>
+        </foreach>
+    </insert>
+
+    <select id="getHead" parameterType="String" resultType="String">
+        select COLUMN_NAME
+        # 从系统数据库查询表名
+        from information_schema.COLUMNS
+        where TABLE_NAME = #{finalTableName}
+          #         确保在当前数据库进行查询
+          and TABLE_SCHEMA = (select database())
+        #         根据列的顺序进行排序
+        order by ORDINAL_POSITION
+    </select>
+
+    <select id="getByTableName" parameterType="String" resultType="java.util.LinkedHashMap">
+        <bind name="dataPermission" value="@com.example.context.BaseContext@getDataPermission()"/>
+        select
+        <foreach item="enHead" collection="enHeads" separator=",">
+            ${enHead}
+        </foreach>
+        from ${finalTableName}
+        <where>
+            <if test="dataPermission != null">
+                AND field_0 BETWEEN ${dataPermission.voyageStart} AND ${dataPermission.voyageEnd}
+            </if>
+        </where>
+    </select>
+
+    <select id="findTablesWithPrefix" resultType="java.lang.String">
+        select TABLE_NAME
+        # 从系统数据库查询表名
+        from information_schema.TABLES
+        where TABLE_NAME like concat('${tableName}', '%')
+          #         确保在当前数据库进行查询
+          and TABLE_SCHEMA = (select database())
+    </select>
+
+    <select id="statistics" resultType="com.example.pojo.vo.ExcelColumnStatisticsVO">
+        <bind name="dataPermission" value="@com.example.context.BaseContext@getDataPermission()"/>
+        <foreach collection="numberfields" item="nf" separator="UNION ALL">
+            SELECT DISTINCT b.field_cn_name as columnName,
+            MAX(`${nf}`) as columnMax,
+            MIN(`${nf}`) as columnMin,
+            AVG(`${nf}`) as columnAvg,
+            SUM(`${nf}`) as columnSum,
+            COUNT(`${nf}`) as columnCount
+            FROM ${finalTableName} a
+            JOIN t_field b
+            ON `${nf}` IS NOT NULL
+            AND b.table_en_name = '${tableName}'
+            AND b.sheet_en_name = '${sheetEnName}'
+            AND b.field_en_name = '${nf}'
+            <if test="dataPermission != null">
+                AND a.field_0 BETWEEN ${dataPermission.voyageStart} AND ${dataPermission.voyageEnd}
+            </if>
+            GROUP BY b.field_cn_name
+        </foreach>
+    </select>
+
+    <insert id="addField">
+        alter table ${finalTableName}
+            add column `${fieldEnName}` ${fieldType};
+    </insert>
+
+    <insert id="addRecord">
+        insert into ${finalTableName}
+        <foreach collection="record.keySet()" item="key" separator="," open="(" close=")">
+            ${key}
+        </foreach>
+        values
+        <foreach collection="record.values()" item="value" separator="," open="(" close=")">
+            #{value}
+        </foreach>
+    </insert>
+
+    <update id="updateFieldType">
+        alter table ${finalTableName} modify `${oldFieldEnName}` ${fieldType};
+    </update>
+
+    <update id="renameTable" parameterType="java.util.List">
+        rename
+        table
+        ${oldTableName}
+        to
+        ${newTableName}
+    </update>
+
+    <update id="updateRecord">
+        update ${finalTableName}
+        <set>
+            <foreach collection="record" item="value" index="key" separator=",">
+                <if test="key != 'id'">
+                    `${key}` = #{value}
+                </if>
+            </foreach>
+        </set>
+        where id = #{id};
+    </update>
+
+    <delete id="deleteField">
+        alter table ${finalTableName} drop column `${fieldEnName}`;
+    </delete>
+
+    <select id="conditionQuery" resultType="java.util.LinkedHashMap">
+        <bind name="dataPermission" value="@com.example.context.BaseContext@getDataPermission()"/>
+        <!-- 获取分页数据 -->
+        select SQL_CALC_FOUND_ROWS * from ${finalTableName}
+        <where>
+            1 = 1
+            -- 固定值查询
+            <foreach collection="stringEnFields" item="field" index="index" separator="and" open="and">
+                ${field} like concat('%', #{fieldValues[${index}]}, '%')
+            </foreach>
+
+            -- 精确数值查询
+            <foreach collection="numberEnFields" item="field" index="index" separator="and" open="and">
+                ${field} = #{numbers[${index}]}
+            </foreach>
+
+            -- 范围查询
+            <foreach collection="rangeEnFields" item="field" index="index" separator="and" open="and">
+                <if test="mins != null and mins[index] != null">
+                    <bind name="minValue" value="mins[index]"/>
+                </if>
+                <if test="maxs != null and maxs[index] != null">
+                    <bind name="maxValue" value="maxs[index]"/>
+                </if>
+                <choose>
+                    <when test="minValue != null and maxValue != null">
+                        ${field} between ${minValue} and ${maxValue}
+                    </when>
+                    <when test="minValue != null">
+                        ${field} &gt;= ${minValue}
+                    </when>
+                    <when test="maxValue != null">
+                        ${field} &lt;= ${maxValue}
+                    </when>
+                </choose>
+            </foreach>
+
+            -- 日期查询
+            <foreach collection="dateEnFields" item="field" index="index" separator="and" open="and">
+                ${field} between '${begins[index]}' and '${ends[index]}'
+            </foreach>
+
+            -- 根据权限过滤数据
+            <if test="dataPermission != null">
+                AND field_0 BETWEEN ${dataPermission.voyageStart} AND ${dataPermission.voyageEnd}
+            </if>
+        </where>
+    </select>
+
+    <select id="getTotalCount" resultType="java.lang.Long">
+        <!-- 获取总记录数 -->
+        select FOUND_ROWS()
+    </select>
+
+    <select id="getRecordById" resultType="java.util.LinkedHashMap">
+        select *
+        from ${finalTableName}
+        where id = ${id}
+    </select>
+
+    <select id="pageQuery" resultType="java.util.LinkedHashMap">
+        <bind name="dataPermission" value="@com.example.context.BaseContext@getDataPermission()"/>
+        select * from ${finalTableName}
+        <where>
+            <if test="dataPermission != null">
+                AND field_0 BETWEEN ${dataPermission.voyageStart} AND ${dataPermission.voyageEnd}
+            </if>
+        </where>
+    </select>
+</mapper>

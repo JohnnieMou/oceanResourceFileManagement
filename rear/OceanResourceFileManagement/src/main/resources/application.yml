@@ -1,0 +1,87 @@
+server:
+  port: 9999
+
+spring:
+  main:
+    allow-circular-references: true
+  datasource:
+    druid:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: jdbc:mysql://localhost:3306/orfm?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+      username: root
+      password: 123456
+  servlet:
+    multipart:
+      enabled: true  # 启用文件上传支持
+      max-file-size: 100MB  # 单个文件的最大上传大小
+      max-request-size: 200MB  # 整个请求的最大大小（包括所有文件和表单数据）
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000 # 缓存过期时间，单位毫秒
+  redis:
+    host: localhost
+    port: 6379
+    password:
+    database: 2
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+mybatis-plus:
+  type-aliases-package: com.example.pojo.entity
+  type-handlers-package: com.example.handler
+  global-config:
+    db-config:
+      id-type: auto
+  configuration:
+    call-setters-on-nulls: true # 解决查询字段值为null而不显示的问题
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 开发环境打印SQL
+
+knife4j:
+  enable: true
+  basic:
+    enable: true
+    username: admin
+    password: 123
+
+
+baidu:
+  app-id: 20240813002122152
+  security-key: VWTPJL_C5T7FU7rM5eOU
+
+storage:
+  mode: minio
+  minio:
+    endpoint: http://localhost:9005
+    accessKey: minioadmin
+    secretKey: minioadmin
+    bucketName: "orfm"
+
+
+#logging:
+#  level:
+#    root: INFO                   # 全局日志级别
+#    org.mybatis: DEBUG           # MyBatis框架的日志级别
+#    org.springframework: INFO    # Spring框架的日志级别
+#    org.apache.ibatis: DEBUG     # ibatis的日志级别
+#    com.example.mapper: DEBUG    # 你的Mapper接口的日志级别
+#  pattern:
+#    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
+#  file:
+#    name: logs/application.log   # 日志文件路径和名称
+#  logback:
+#    rollingpolicy:
+#      max-file-size: 10MB        # 单个日志文件最大大小
+#      max-history: 30            # 保留的日志文件数量
+#      total-size-cap: 3GB        # 总文件大小上限
+
+orfm:
+  jwt:
+    secret-key: orfm
+    ttl: 86400000  # 1000*60*60*24
+    token-name: token
+  autolog:
+    enable: true

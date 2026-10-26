@@ -1,0 +1,90 @@
+// 解析名为 TestMe macros.java 的模板文件
+#parse("TestMe macros.java")
+// 设置一个变量 $hasMocks，用于检查被测试的类是否有需要模拟的依赖
+#set($hasMocks=$MockitoMockBuilder.hasMocks($TESTED_CLASS))
+// 如果存在包名，则生成 package 语句
+#if($PACKAGE_NAME)
+package ${PACKAGE_NAME};
+#end
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import lombok.extern.slf4j.Slf4j;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+@SpringBootTest
+@Slf4j
+public class ${CLASS_NAME} {
+
+// 遍历被测试的类的所有字段
+#foreach($field in $TESTED_CLASS.fields)
+    #if($field.name != "log" &&
+        $field.name != "baseMapper" &&
+        $field.name != "entityClass" &&
+        $field.name != "mapperClass" &&
+        $field.name != "sqlSessionFactory")
+        // 生成非 MyBatis-Plus 字段的代码
+        #if($hasMocks && $mockBuilder.isMockable($field, $TESTED_CLASS))
+        // 存在需要模拟的字段，则生成 @Autowired 注解
+        @Autowired
+        $field.type.canonicalName $field.name;
+        #elseif($mockBuilder.isMockExpected($field))
+        // 字段不能被模拟，生成注释说明原因
+        $mockBuilder.getImmockabiliyReason("//",$field)
+        #end
+    #end
+#end
+    // 自动注入被测试类的实例，变量名为类名的首字母小写形式
+    @Autowired
+    $TESTED_CLASS.canonicalName $StringUtils.deCapitalizeFirstLetter($TESTED_CLASS.name);
+// 遍历被测试的类的所有方法
+#foreach($method in $TESTED_CLASS.methods)
+    #if($method.name != "getBaseMapper" &&
+        $method.name != "getEntityClass" &&
+        $method.name != "getSqlSessionFactory" &&
+        $method.name != "getMapperClass" &&
+        $method.name != "saveBatch" &&
+        $method.name != "getSqlStatement" &&
+        $method.name != "saveOrUpdate" &&
+        $method.name != "saveOrUpdateBatch" &&
+        $method.name != "updateBatchById" &&
+        $method.name != "getOne" &&
+        $method.name != "getOneOpt" &&
+        $method.name != "getMap" &&
+        $method.name != "getObj" &&
+        $method.name != "removeById" &&
+        $method.name != "removeBatchByIds" &&
+        $method.name != "lambdaQuery" &&
+        $method.name != "save" &&
+        $method.name != "updateById" &&
+        $method.name != "update" &&
+        $method.name != "getById")
+        // 生成非 MyBatis-Plus 方法的代码
+        #if($TestSubjectUtils.shouldBeTested($method))
+        // 方法应该被测试，生成测试方法
+
+        @Test
+        public void #renderTestMethodName($method.name)()#if($method.methodExceptionTypes) throws $method.methodExceptionTypes#end {
+            #if($hasMocks && $MockitoMockBuilder.shouldStub($method,$TESTED_CLASS))
+            // 生成桩
+            #renderMockStubs($method,$TESTED_CLASS)
+            #end
+            // 调用被测试的方法
+            #renderMethodCall($method,$TESTED_CLASS.name)
+            #if($hasMocks && $MockitoMockBuilder.shouldVerify($method,$TESTED_CLASS))
+            // 方法需要验证，生成验证代码
+            #renderMockVerifies($method,$TESTED_CLASS)
+            #end
+            #if($method.hasReturn())
+            // 方法有返回值，生成断言
+            Assertions.#renderJUnitAssert($method)
+            #end
+        }
+        #end
+    #end
+#end
+}

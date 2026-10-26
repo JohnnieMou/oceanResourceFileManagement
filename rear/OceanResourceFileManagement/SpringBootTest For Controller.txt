@@ -1,0 +1,43 @@
+#parse("TestMe macros.java")
+#set($hasMocks=$MockitoMockBuilder.hasMocks($TESTED_CLASS))
+#if($PACKAGE_NAME)
+package ${PACKAGE_NAME};
+#end
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.*;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+
+@SpringBootTest
+@Slf4j
+@AutoConfigureMockMvc // 启用 MockMvc
+@TestInstance(TestInstance.Lifecycle.PER_CLASS) // 确保 @BeforeAll 和 @AfterAll 可以使用注入的对象
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class) // 确保测试方法按顺序执行
+public class ${CLASS_NAME} {
+
+#foreach($field in $TESTED_CLASS.fields)
+    #if($hasMocks && $mockBuilder.isMockable($field, $TESTED_CLASS))
+    @Autowired
+    $field.type.canonicalName $field.name;
+    #elseif($mockBuilder.isMockExpected($field))
+        $mockBuilder.getImmockabiliyReason("//",$field)
+    #end
+#end
+    @Autowired
+    MockMvc mockMvc;
+    @Autowired
+    ObjectMapper objectMapper;
+    @Autowired
+    $TESTED_CLASS.canonicalName $StringUtils.deCapitalizeFirstLetter($TESTED_CLASS.name);
+#foreach($method in $TESTED_CLASS.methods)
+    #if($TestSubjectUtils.shouldBeTested($method))
+
+    @Test
+    public void #renderTestMethodName($method.name)()#if($method.methodExceptionTypes) throws $method.methodExceptionTypes#end {
+    }
+    #end
+#end
+}

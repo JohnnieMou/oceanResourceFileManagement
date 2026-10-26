@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.TableMapper">
+    <select id="getTableEnNames" resultType="java.lang.String">
+        select table_en_name from t_table where table_cn_name in
+        <foreach collection="tableCnNames" item="tableCnName" open="(" separator="," close=")">
+            #{tableCnName}
+        </foreach>
+    </select>
+</mapper>
